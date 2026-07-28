@@ -170,6 +170,21 @@ const (
 	// the number of API calls to AlibabaCloud ECS service.
 	AlibabaCloudReleaseExcessIPs = "alibaba-cloud-release-excess-ips"
 
+	// OCICompartmentID is the compartment containing cluster instances and VCNs.
+	OCICompartmentID = "oci-compartment-id"
+
+	// OCIAuthMethod selects instance-principal or config-file authentication.
+	OCIAuthMethod = "oci-auth-method"
+
+	// OCIConfigFile is the path to an OCI SDK configuration file.
+	OCIConfigFile = "oci-config-file"
+
+	// OCIConfigProfile is the profile in the OCI SDK configuration file.
+	OCIConfigProfile = "oci-config-profile"
+
+	// OCIReleaseExcessIPs enables release of unused secondary private IPs.
+	OCIReleaseExcessIPs = "oci-release-excess-ips"
+
 	// ProxyIdleTimeoutSeconds is the idle timeout for proxy connections to upstream clusters
 	ProxyIdleTimeoutSeconds = "proxy-idle-timeout-seconds"
 
@@ -359,6 +374,13 @@ type OperatorConfig struct {
 	// the number of API calls to AlibabaCloud ECS service.
 	AlibabaCloudReleaseExcessIPs bool
 
+	// OCI options
+	OCICompartmentID    string
+	OCIAuthMethod       string
+	OCIConfigFile       string
+	OCIConfigProfile    string
+	OCIReleaseExcessIPs bool
+
 	// EnableGatewayAPI enables support of Gateway API
 	EnableGatewayAPI bool
 
@@ -471,6 +493,13 @@ func (c *OperatorConfig) Populate(logger *slog.Logger, vp *viper.Viper) {
 
 	c.AlibabaCloudVPCID = vp.GetString(AlibabaCloudVPCID)
 	c.AlibabaCloudReleaseExcessIPs = vp.GetBool(AlibabaCloudReleaseExcessIPs)
+
+	// OCI options
+	c.OCICompartmentID = vp.GetString(OCICompartmentID)
+	c.OCIAuthMethod = vp.GetString(OCIAuthMethod)
+	c.OCIConfigFile = vp.GetString(OCIConfigFile)
+	c.OCIConfigProfile = vp.GetString(OCIConfigProfile)
+	c.OCIReleaseExcessIPs = vp.GetBool(OCIReleaseExcessIPs)
 
 	// Option maps and slices
 

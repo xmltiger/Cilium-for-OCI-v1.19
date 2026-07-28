@@ -84,6 +84,15 @@ spec:
         args:
         - --config-dir=/tmp/cilium/config-map
         - --debug=$(CILIUM_DEBUG)
+        {{- if .Values.oci.enabled }}
+        - --oci-compartment-id={{ required "oci.compartmentID is required when oci.enabled=true" .Values.oci.compartmentID }}
+        - --oci-auth-method={{ .Values.oci.authMethod }}
+        - --oci-release-excess-ips={{ .Values.oci.releaseExcessIPs }}
+        {{- if eq .Values.oci.authMethod "config-file" }}
+        - --oci-config-file={{ required "oci.configFile is required when oci.authMethod=config-file" .Values.oci.configFile }}
+        - --oci-config-profile={{ .Values.oci.configProfile }}
+        {{- end }}
+        {{- end }}
         {{- with .Values.operator.extraArgs }}
         {{- toYaml . | trim | nindent 8 }}
         {{- end }}

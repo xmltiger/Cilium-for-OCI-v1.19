@@ -144,6 +144,7 @@ var (
 		ipamOption.IPAMClusterPool,
 		ipamOption.IPAMMultiPool,
 		ipamOption.IPAMAlibabaCloud,
+		ipamOption.IPAMOCI,
 		ipamOption.IPAMDelegatedPlugin,
 	}
 

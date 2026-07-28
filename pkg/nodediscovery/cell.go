@@ -55,6 +55,10 @@ var defaultConfig = config{
 	AlibabaCloudVSwitchTags:       map[string]string{},
 	AlibabaCloudSecurityGroups:    []string{},
 	AlibabaCloudSecurityGroupTags: map[string]string{},
+
+	OCISubnetIDs:             []string{},
+	OCISubnetTags:            map[string]string{},
+	OCINetworkSecurityGroups: []string{},
 }
 
 type config struct {
@@ -79,6 +83,11 @@ type config struct {
 	AlibabaCloudVSwitchTags       map[string]string
 	AlibabaCloudSecurityGroups    []string
 	AlibabaCloudSecurityGroupTags map[string]string
+
+	OCIVCNID                 string
+	OCISubnetIDs             []string
+	OCISubnetTags            map[string]string
+	OCINetworkSecurityGroups []string
 }
 
 func (c config) Flags(flags *pflag.FlagSet) {
@@ -103,4 +112,9 @@ func (c config) Flags(flags *pflag.FlagSet) {
 	flags.StringToString("alibabacloud-vswitch-tags", c.AlibabaCloudVSwitchTags, "List of tags to use when evaluating what VSwitches to use for ENI and IP allocation at the node level")
 	flags.StringSlice("alibabacloud-security-groups", c.AlibabaCloudSecurityGroups, "List of security groups to attach to any ENI that is created and attached to the instance at the node level")
 	flags.StringToString("alibabacloud-security-group-tags", c.AlibabaCloudSecurityGroupTags, "List of tags to use when evaluating what security groups to use for the ENI at the node level")
+
+	flags.String("oci-vcn-id", c.OCIVCNID, "OCI VCN OCID used for VNIC and private IP allocation")
+	flags.StringSlice("oci-subnet-ids", c.OCISubnetIDs, "OCI subnet OCIDs allowed for VNIC and private IP allocation")
+	flags.StringToString("oci-subnet-tags", c.OCISubnetTags, "OCI free-form tags used to select subnets for VNIC allocation")
+	flags.StringSlice("oci-network-security-groups", c.OCINetworkSecurityGroups, "OCI network security group OCIDs attached to Cilium-managed VNICs")
 }

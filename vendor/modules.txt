@@ -839,6 +839,9 @@ github.com/gobuffalo/flect
 # github.com/godbus/dbus/v5 v5.2.0
 ## explicit; go 1.20
 github.com/godbus/dbus/v5
+# github.com/gofrs/flock v0.10.0
+## explicit; go 1.21.0
+github.com/gofrs/flock
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/gogoproto
@@ -1149,6 +1152,12 @@ github.com/opencontainers/image-spec/specs-go/v1
 github.com/opentracing/opentracing-go
 github.com/opentracing/opentracing-go/ext
 github.com/opentracing/opentracing-go/log
+# github.com/oracle/oci-go-sdk/v65 v65.121.1
+## explicit; go 1.25.0
+github.com/oracle/oci-go-sdk/v65/common
+github.com/oracle/oci-go-sdk/v65/common/auth
+github.com/oracle/oci-go-sdk/v65/common/utils
+github.com/oracle/oci-go-sdk/v65/core
 # github.com/osrg/gobgp/v3 v3.37.0 => github.com/cilium/gobgp/v3 v3.0.0-20260130142103-27e5da2a39e6
 ## explicit; go 1.23.0
 github.com/osrg/gobgp/v3/api
@@ -1238,6 +1247,9 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sirupsen/logrus v1.9.4
 ## explicit; go 1.17
 github.com/sirupsen/logrus
+# github.com/sony/gobreaker/v2 v2.4.0
+## explicit; go 1.22.0
+github.com/sony/gobreaker/v2
 # github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8
 ## explicit; go 1.20
 github.com/sourcegraph/conc
@@ -1324,6 +1336,9 @@ github.com/x448/float16
 # github.com/xlab/treeprint v1.2.0
 ## explicit; go 1.13
 github.com/xlab/treeprint
+# github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
+## explicit; go 1.17
+github.com/youmark/pkcs8
 # go.etcd.io/etcd/api/v3 v3.6.7
 ## explicit; go 1.24.0
 go.etcd.io/etcd/api/v3/authpb
@@ -1463,8 +1478,10 @@ golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/internal/alias
 golang.org/x/crypto/internal/poly1305
+golang.org/x/crypto/pbkdf2
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2
+golang.org/x/crypto/scrypt
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf

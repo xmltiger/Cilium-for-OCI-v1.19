@@ -95,7 +95,7 @@ func (c *defaultEndpointConfiguration) PrepareEndpoint(ipam *models.IPAMResponse
 		ep.DatapathConfiguration.ExternalIpam = true
 	}
 
-	if c.Conf.IpamMode == ipamOption.IPAMENI {
+	if c.Conf.IpamMode == ipamOption.IPAMENI || c.Conf.IpamMode == ipamOption.IPAMOCI {
 		ifindex, err := ifindexFromMac(ipam.IPv4.MasterMac)
 		if err == nil {
 			ep.ParentInterfaceIndex = ifindex

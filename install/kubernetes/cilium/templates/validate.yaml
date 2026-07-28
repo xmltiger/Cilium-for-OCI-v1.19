@@ -55,6 +55,13 @@
   {{- fail "Both k8sServiceHostRef and k8sServiceHost are set. Please set only one of them." }}
 {{- end }}
 
+{{- if and .Values.oci.enabled .Values.ipv6.enabled }}
+  {{- fail "OCI VNIC IPAM currently supports IPv4 only; set ipv6.enabled=false" }}
+{{- end }}
+{{- if and .Values.oci.enabled (not (has .Values.oci.authMethod (list "instance-principal" "config-file"))) }}
+  {{- fail "oci.authMethod must be instance-principal or config-file" }}
+{{- end }}
+
 {{/* validate hubble config */}}
 {{- if and .Values.hubble.ui.enabled (not .Values.hubble.ui.standalone.enabled) }}
   {{- if not .Values.hubble.relay.enabled }}
@@ -164,8 +171,8 @@
 {{ if and
     (ne (index .Values.extraConfig "allow-unsafe-policy-skb-usage") "true")
     (or (and (ge (int .Values.cluster.id) 128) (le (int .Values.cluster.id) 255)) (and (ge (int .Values.cluster.id) 384) (le (int .Values.cluster.id) 511)))
-    (or .Values.eni.enabled .Values.alibabacloud.enabled (eq .Values.cni.chainingMode "aws-cni")) -}}
-  {{ fail "Cilium is currently affected by a bug that causes traffic matched by network policies to be incorrectly dropped when running in either ENI mode (both AWS and AlibabaCloud) or AWS VPC CNI chaining mode, if the cluster ID is 128-255 (and 384-511 when maxConnectedClusters=511). Please refer to https://github.com/cilium/cilium/issues/21330 for additional details." }}
+    (or .Values.eni.enabled .Values.alibabacloud.enabled .Values.oci.enabled (eq .Values.cni.chainingMode "aws-cni")) -}}
+  {{ fail "Cilium is currently affected by a bug that causes traffic matched by network policies to be incorrectly dropped when running in a cloud VNIC IPAM mode (AWS, AlibabaCloud, or OCI) or AWS VPC CNI chaining mode, if the cluster ID is 128-255 (and 384-511 when maxConnectedClusters=511). Please refer to https://github.com/cilium/cilium/issues/21330 for additional details." }}
 {{- end }}
 
 {{/* validate clustermesh-apiserver */}}

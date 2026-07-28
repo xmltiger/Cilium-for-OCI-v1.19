@@ -271,6 +271,20 @@ func deriveVpcCIDRs(node *ciliumv2.CiliumNode) (primaryCIDR *cidr.CIDR, secondar
 			return
 		}
 	}
+	for _, vnic := range node.Status.OCI.VNICs {
+		for i, cidrText := range vnic.VCN.CIDRs {
+			c, err := cidr.ParseCIDR(cidrText)
+			if err != nil {
+				continue
+			}
+			if i == 0 && primaryCIDR == nil {
+				primaryCIDR = c
+			} else {
+				secondaryCIDRs = append(secondaryCIDRs, c)
+			}
+		}
+		return
+	}
 	return
 }
 
@@ -348,7 +362,7 @@ func (n *nodeStore) hasMinimumIPsInPool(localNodeStore *node.LocalNodeStore) (mi
 			minimumReached = true
 		}
 
-		if n.conf.IPAMMode() == ipamOption.IPAMENI || n.conf.IPAMMode() == ipamOption.IPAMAzure || n.conf.IPAMMode() == ipamOption.IPAMAlibabaCloud {
+		if n.conf.IPAMMode() == ipamOption.IPAMENI || n.conf.IPAMMode() == ipamOption.IPAMAzure || n.conf.IPAMMode() == ipamOption.IPAMAlibabaCloud || n.conf.IPAMMode() == ipamOption.IPAMOCI {
 			if !n.autoDetectIPv4NativeRoutingCIDR(localNodeStore) {
 				minimumReached = false
 			}
@@ -409,6 +423,37 @@ func validateENIConfig(node *ciliumv2.CiliumNode) error {
 	return nil
 }
 
+func validateOCIConfig(node *ciliumv2.CiliumNode) error {
+	for id, vnic := range node.Status.OCI.VNICs {
+		if vnic.ID == "" || vnic.MAC == "" || vnic.Subnet.ID == "" ||
+			vnic.Subnet.VirtualRouterIP == "" || len(vnic.VCN.CIDRs) == 0 ||
+			vnic.InterfaceIndex < 0 {
+			return fmt.Errorf("OCI VNIC %s has incomplete routing metadata", id)
+		}
+	}
+
+	byVNIC := map[string]map[string]struct{}{}
+	for id, vnic := range node.Status.OCI.VNICs {
+		addresses := make(map[string]struct{}, len(vnic.PrivateIPs))
+		for _, privateIP := range vnic.PrivateIPs {
+			if !privateIP.IsPrimary && privateIP.Address != "" {
+				addresses[privateIP.Address] = struct{}{}
+			}
+		}
+		byVNIC[id] = addresses
+	}
+	for address, allocation := range node.Spec.IPAM.Pool {
+		addresses, ok := byVNIC[allocation.Resource]
+		if !ok {
+			return fmt.Errorf("OCI VNIC %s referenced by IP %s is absent from status", allocation.Resource, address)
+		}
+		if _, ok := addresses[address]; !ok {
+			return fmt.Errorf("OCI VNIC %s does not contain private IP %s", allocation.Resource, address)
+		}
+	}
+	return nil
+}
+
 // updateLocalNodeResource is called when the CiliumNode resource representing
 // the local node has been added or updated. It updates the available IPs based
 // on the custom resource passed into the function.
@@ -423,6 +468,12 @@ func (n *nodeStore) updateLocalNodeResource(node *ciliumv2.CiliumNode) {
 		}
 
 		configureENIDevices(n.logger, n.ownNode, node, n.mtuConfig, n.sysctl)
+	}
+	if n.conf.IPAMMode() == ipamOption.IPAMOCI {
+		if err := validateOCIConfig(node); err != nil {
+			n.logger.Info("OCI VNIC state is not consistent yet", logfields.Error, err)
+			return
+		}
 	}
 
 	n.ownNode = node
@@ -538,6 +589,12 @@ func (n *nodeStore) setOwnNodeWithoutPoolUpdate(node *ciliumv2.CiliumNode) {
 	if n.conf.IPAMMode() == ipamOption.IPAMENI {
 		if err := validateENIConfig(node); err != nil {
 			n.logger.Info("ENI state is not consistent yet", logfields.Error, err)
+			return
+		}
+	}
+	if n.conf.IPAMMode() == ipamOption.IPAMOCI {
+		if err := validateOCIConfig(node); err != nil {
+			n.logger.Info("OCI VNIC state is not consistent yet", logfields.Error, err)
 			return
 		}
 	}
@@ -875,6 +932,32 @@ func (a *crdAllocator) buildAllocationResult(ip net.IP, ipInfo *ipamTypes.Alloca
 			return
 		}
 		return nil, fmt.Errorf("unable to find ENI %s", ipInfo.Resource)
+
+	case ipamOption.IPAMOCI:
+		for _, vnic := range a.store.ownNode.Status.OCI.VNICs {
+			if vnic.ID != ipInfo.Resource {
+				continue
+			}
+			if vnic.MAC == "" || vnic.Subnet.VirtualRouterIP == "" || vnic.InterfaceIndex < 0 {
+				return nil, fmt.Errorf("OCI VNIC %s is missing MAC, gateway, or interface index", vnic.ID)
+			}
+			result.PrimaryMAC = vnic.MAC
+			result.GatewayIP = vnic.Subnet.VirtualRouterIP
+			result.CIDRs = append(result.CIDRs, vnic.VCN.CIDRs...)
+			if a.conf.IPv4NativeRoutingCIDR != nil {
+				result.CIDRs = append(result.CIDRs, a.conf.IPv4NativeRoutingCIDR.String())
+			}
+			if a.conf.EnableIPMasqAgent {
+				for _, prefix := range a.ipMasqAgent.NonMasqCIDRsFromConfig() {
+					if ip.To4() != nil && prefix.Addr().Is4() {
+						result.CIDRs = append(result.CIDRs, prefix.String())
+					}
+				}
+			}
+			result.InterfaceNumber = strconv.Itoa(vnic.InterfaceIndex)
+			return result, nil
+		}
+		return nil, fmt.Errorf("unable to find OCI VNIC %s", ipInfo.Resource)
 	}
 
 	return

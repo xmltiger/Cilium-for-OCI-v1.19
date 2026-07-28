@@ -36,6 +36,8 @@ import (
 	nodemanager "github.com/cilium/cilium/pkg/node/manager"
 	nodestore "github.com/cilium/cilium/pkg/node/store"
 	nodeTypes "github.com/cilium/cilium/pkg/node/types"
+	ociMetadata "github.com/cilium/cilium/pkg/oci/metadata"
+	ociTypes "github.com/cilium/cilium/pkg/oci/vnic/types"
 	"github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/cilium/pkg/time"
 )
@@ -583,6 +585,55 @@ func (n *NodeDiscovery) mutateNodeResource(ctx context.Context, nodeResource *ci
 			if c.IPAM.PreAllocate != 0 {
 				nodeResource.Spec.IPAM.PreAllocate = c.IPAM.PreAllocate
 			}
+		}
+
+	case ipamOption.IPAMOCI:
+		instanceID, shape, availabilityDomain, compartmentID, primaryVNICID, primarySubnetID, err :=
+			ociMetadata.GetInstanceMetadata(ctx)
+		if err != nil {
+			return fmt.Errorf("retrieve OCI instance metadata: %w", err)
+		}
+		nodeResource.Spec.InstanceID = instanceID
+		nodeResource.Spec.OCI = ociTypes.Spec{
+			Shape:                 shape,
+			CompartmentID:         compartmentID,
+			VCNID:                 n.config.OCIVCNID,
+			AvailabilityDomain:    availabilityDomain,
+			PrimaryVNICID:         primaryVNICID,
+			PrimarySubnetID:       primarySubnetID,
+			SubnetIDs:             n.config.OCISubnetIDs,
+			SubnetTags:            n.config.OCISubnetTags,
+			NetworkSecurityGroups: n.config.OCINetworkSecurityGroups,
+		}
+		nodeResource.Spec.IPAM.PreAllocate = n.config.IPAMPreAllocate
+		nodeResource.Spec.IPAM.MinAllocate = n.config.IPAMMinAllocate
+		nodeResource.Spec.IPAM.MaxAllocate = n.config.IPAMMaxAllocate
+
+		if c := n.cniConfigManager.GetCustomNetConf(); c != nil {
+			if c.OCI.VCNID != "" {
+				nodeResource.Spec.OCI.VCNID = c.OCI.VCNID
+			}
+			if len(c.OCI.SubnetIDs) > 0 {
+				nodeResource.Spec.OCI.SubnetIDs = c.OCI.SubnetIDs
+			}
+			if len(c.OCI.SubnetTags) > 0 {
+				nodeResource.Spec.OCI.SubnetTags = c.OCI.SubnetTags
+			}
+			if len(c.OCI.NetworkSecurityGroups) > 0 {
+				nodeResource.Spec.OCI.NetworkSecurityGroups = c.OCI.NetworkSecurityGroups
+			}
+			if c.IPAM.PreAllocate != 0 {
+				nodeResource.Spec.IPAM.PreAllocate = c.IPAM.PreAllocate
+			}
+			if c.IPAM.MinAllocate != 0 {
+				nodeResource.Spec.IPAM.MinAllocate = c.IPAM.MinAllocate
+			}
+			if c.IPAM.MaxAllocate != 0 {
+				nodeResource.Spec.IPAM.MaxAllocate = c.IPAM.MaxAllocate
+			}
+		}
+		if nodeResource.Spec.OCI.VCNID == "" {
+			return errors.New("OCI VCN ID is required; set --oci-vcn-id or the CNI configuration field oci.vcn-id")
 		}
 	}
 

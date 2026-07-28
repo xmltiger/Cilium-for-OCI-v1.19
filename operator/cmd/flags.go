@@ -104,6 +104,8 @@ func InitGlobalFlags(logger *slog.Logger, cmd *cobra.Command, vp *viper.Viper) {
 		defaultIPAM = ipamOption.IPAMAzure
 	case "cilium-operator-alibabacloud":
 		defaultIPAM = ipamOption.IPAMAlibabaCloud
+	case "cilium-operator-oci":
+		defaultIPAM = ipamOption.IPAMOCI
 	case "cilium-operator-generic":
 		defaultIPAM = ipamOption.IPAMClusterPool
 	}
@@ -126,6 +128,8 @@ func InitGlobalFlags(logger *slog.Logger, cmd *cobra.Command, vp *viper.Viper) {
 				return "cilium-operator-azure"
 			case ipamOption.IPAMAlibabaCloud:
 				return "cilium-operator-alibabacloud"
+			case ipamOption.IPAMOCI:
+				return "cilium-operator-oci"
 			case ipamOption.IPAMKubernetes, ipamOption.IPAMClusterPool, ipamOption.IPAMCRD:
 				return "cilium-operator-generic"
 			default:
@@ -158,9 +162,13 @@ func InitGlobalFlags(logger *slog.Logger, cmd *cobra.Command, vp *viper.Viper) {
 			if ipamFlagValue != ipamOption.IPAMAlibabaCloud {
 				return unsupporterErr()
 			}
+		case "cilium-operator-oci":
+			if ipamFlagValue != ipamOption.IPAMOCI {
+				return unsupporterErr()
+			}
 		case "cilium-operator-generic":
 			switch ipamFlagValue {
-			case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud:
+			case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud, ipamOption.IPAMOCI:
 				return unsupporterErr()
 			}
 		}

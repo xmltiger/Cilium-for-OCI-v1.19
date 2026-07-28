@@ -273,7 +273,7 @@ func (r *infraIPAllocator) reallocateRouterIPs(ctx context.Context, family datap
 
 	// Coalescing multiple CIDRs. GH #18868
 	if masq &&
-		(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure) &&
+		(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure || r.daemonConfig.IPAM == ipamOption.IPAMOCI) &&
 		result != nil &&
 		len(result.CIDRs) > 0 {
 		result.CIDRs, err = r.coalesceCIDRs(result.CIDRs)
@@ -284,6 +284,7 @@ func (r *infraIPAllocator) reallocateRouterIPs(ctx context.Context, family datap
 
 	if (r.daemonConfig.IPAM == ipamOption.IPAMENI ||
 		r.daemonConfig.IPAM == ipamOption.IPAMAlibabaCloud ||
+		r.daemonConfig.IPAM == ipamOption.IPAMOCI ||
 		r.daemonConfig.IPAM == ipamOption.IPAMAzure) && result != nil {
 		var routingInfo *linuxrouting.RoutingInfo
 		routingInfo, err = linuxrouting.NewRoutingInfo(r.logger, result.GatewayIP, result.CIDRs,
@@ -296,7 +297,7 @@ func (r *infraIPAllocator) reallocateRouterIPs(ctx context.Context, family datap
 		// wait for ENI to be up and running before configuring routes and rules.
 		// This avoids spurious errors where netlink is not able to find
 		// the ifindex by its MAC because the ENI is not showing up yet.
-		if r.daemonConfig.IPAM == ipamOption.IPAMENI {
+		if r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMOCI {
 			if err := r.waitForENI(ctx, result.PrimaryMAC); err != nil {
 				r.logger.Warn("unable to find ENI netlink interface, this will likely lead to an error in configuring the router routes and rules",
 					logfields.MACAddr, result.PrimaryMAC,
@@ -377,7 +378,7 @@ func (r *infraIPAllocator) allocateHealthIPs(oldV4HealthIP net.IP, oldV6HealthIP
 
 		// Coalescing multiple CIDRs. GH #18868
 		if r.daemonConfig.EnableIPv4Masquerade &&
-			(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure) &&
+			(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure || r.daemonConfig.IPAM == ipamOption.IPAMOCI) &&
 			result != nil &&
 			len(result.CIDRs) > 0 {
 			result.CIDRs, err = r.coalesceCIDRs(result.CIDRs)
@@ -391,7 +392,7 @@ func (r *infraIPAllocator) allocateHealthIPs(oldV4HealthIP net.IP, oldV6HealthIP
 		// In ENI and AlibabaCloud ENI mode, we require the gateway, CIDRs, and the ENI MAC addr
 		// in order to set up rules and routes on the local node to direct
 		// endpoint traffic out of the ENIs.
-		if r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAlibabaCloud {
+		if r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAlibabaCloud || r.daemonConfig.IPAM == ipamOption.IPAMOCI {
 			if r.healthEndpointRouting, err = r.parseRoutingInfo(result); err != nil {
 				r.logger.Warn("Unable to allocate health information for ENI", logfields.Error, err)
 			}
@@ -462,7 +463,7 @@ func (r *infraIPAllocator) allocateIngressIPs(oldV4IngressIP net.IP, oldV6Ingres
 
 		// Coalescing multiple CIDRs. GH #18868
 		if r.daemonConfig.EnableIPv4Masquerade &&
-			(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure) &&
+			(r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAzure || r.daemonConfig.IPAM == ipamOption.IPAMOCI) &&
 			result != nil &&
 			len(result.CIDRs) > 0 {
 			result.CIDRs, err = r.coalesceCIDRs(result.CIDRs)
@@ -478,7 +479,7 @@ func (r *infraIPAllocator) allocateIngressIPs(oldV4IngressIP net.IP, oldV6Ingres
 		// In ENI and AlibabaCloud ENI mode, we require the gateway, CIDRs, and the
 		// ENI MAC addr in order to set up rules and routes on the local node to
 		// direct ingress traffic out of the ENIs.
-		if r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAlibabaCloud {
+		if r.daemonConfig.IPAM == ipamOption.IPAMENI || r.daemonConfig.IPAM == ipamOption.IPAMAlibabaCloud || r.daemonConfig.IPAM == ipamOption.IPAMOCI {
 			if ingressRouting, err := r.parseRoutingInfo(result); err != nil {
 				r.logger.Warn("Unable to allocate ingress information for ENI", logfields.Error, err)
 			} else {

@@ -389,7 +389,7 @@ func (h *ciliumHealthManager) launchAsEndpoint(baseCtx context.Context, endpoint
 		return nil, fmt.Errorf("Error while configuring routes: %w", err)
 	}
 
-	if option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud {
+	if option.Config.IPAM == ipamOption.IPAMENI || option.Config.IPAM == ipamOption.IPAMAlibabaCloud || option.Config.IPAM == ipamOption.IPAMOCI {
 		ri := h.infraIPAllocator.GetHealthEndpointRouting()
 		if ri == nil {
 			return nil, errors.New("failed to configure health endpoint routing - no IP allocated")

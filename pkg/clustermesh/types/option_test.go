@@ -111,6 +111,8 @@ func TestClusterInfoValidateBuggyClusterID(t *testing.T) {
 		{cinfo: ClusterInfo{ID: 128}, ipamMode: ipamOption.IPAMENI, assert: assert.Error},
 		{cinfo: ClusterInfo{ID: 255}, ipamMode: ipamOption.IPAMAlibabaCloud, assert: assert.Error},
 		{cinfo: ClusterInfo{ID: 256}, ipamMode: ipamOption.IPAMAlibabaCloud, assert: assert.NoError},
+		{cinfo: ClusterInfo{ID: 128}, ipamMode: ipamOption.IPAMOCI, assert: assert.Error},
+		{cinfo: ClusterInfo{ID: 256}, ipamMode: ipamOption.IPAMOCI, assert: assert.NoError},
 		{cinfo: ClusterInfo{ID: 127}, chainingMode: "aws-cni", assert: assert.NoError},
 		{cinfo: ClusterInfo{ID: 128}, chainingMode: "aws-cni", assert: assert.Error},
 		{cinfo: ClusterInfo{ID: 255}, chainingMode: "aws-cni", assert: assert.Error},

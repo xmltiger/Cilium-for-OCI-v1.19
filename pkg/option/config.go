@@ -2174,8 +2174,8 @@ func (c *DaemonConfig) Validate(vp *viper.Viper) error {
 		return fmt.Errorf("RouteMetric '%d' cannot be negative", c.RouteMetric)
 	}
 
-	if c.IPAM == ipamOption.IPAMENI && c.EnableIPv6 {
-		return fmt.Errorf("IPv6 cannot be enabled in ENI IPAM mode")
+	if (c.IPAM == ipamOption.IPAMENI || c.IPAM == ipamOption.IPAMOCI) && c.EnableIPv6 {
+		return fmt.Errorf("IPv6 cannot be enabled in %s IPAM mode", c.IPAM)
 	}
 
 	if c.EnableIPv6NDP {
@@ -2952,7 +2952,7 @@ func (c *DaemonConfig) checkIPv4NativeRoutingCIDR() error {
 	if c.TunnelingEnabled() {
 		return nil
 	}
-	if c.IPAMMode() == ipamOption.IPAMENI || c.IPAMMode() == ipamOption.IPAMAlibabaCloud {
+	if c.IPAMMode() == ipamOption.IPAMENI || c.IPAMMode() == ipamOption.IPAMAlibabaCloud || c.IPAMMode() == ipamOption.IPAMOCI {
 		return nil
 	}
 

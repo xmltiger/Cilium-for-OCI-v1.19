@@ -469,6 +469,34 @@ spec:
                   for the node, if any.
                 format: int64
                 type: integer
+              oci:
+                description: OCI is the Oracle Cloud Infrastructure VNIC IPAM configuration.
+                properties:
+                  availability-domain:
+                    type: string
+                  compartment-id:
+                    type: string
+                  network-security-groups:
+                    items:
+                      type: string
+                    type: array
+                  primary-subnet-id:
+                    type: string
+                  primary-vnic-id:
+                    type: string
+                  shape:
+                    type: string
+                  subnet-ids:
+                    items:
+                      type: string
+                    type: array
+                  subnet-tags:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  vcn-id:
+                    type: string
+                type: object
             type: object
           status:
             description: |-
@@ -835,6 +863,78 @@ spec:
                     description: |-
                       Used lists all IPv4 addresses out of Spec.IPAM.Pool which have been allocated
                       and are in use.
+                    type: object
+                type: object
+              oci:
+                description: OCI is the Oracle Cloud Infrastructure VNIC IPAM status.
+                properties:
+                  vnics:
+                    additionalProperties:
+                      description: VNIC represents an OCI virtual network interface
+                        attached to an instance.
+                      properties:
+                        attachment-id:
+                          type: string
+                        availability-domain:
+                          type: string
+                        display-name:
+                          type: string
+                        id:
+                          type: string
+                        interface-index:
+                          description: |-
+                            InterfaceIndex is OCI's VLAN tag for the VNIC attachment. It is stable
+                            for the lifetime of the attachment and provides a unique policy-routing
+                            table selector on the node.
+                          type: integer
+                        is-primary:
+                          type: boolean
+                        mac:
+                          type: string
+                        primary-ip:
+                          type: string
+                        private-ips:
+                          items:
+                            description: PrivateIP is an OCI private IP assigned to
+                              a VNIC.
+                            properties:
+                              address:
+                                type: string
+                              id:
+                                type: string
+                              is-primary:
+                                type: boolean
+                            type: object
+                          type: array
+                        security-groups:
+                          items:
+                            type: string
+                          type: array
+                        subnet:
+                          description: Subnet contains routing information required
+                            by the OCI CNI path.
+                          properties:
+                            cidrs:
+                              items:
+                                type: string
+                              type: array
+                            id:
+                              type: string
+                            virtual-router-ip:
+                              type: string
+                          type: object
+                        vcn:
+                          description: VCN contains all IPv4 CIDRs associated with
+                            an OCI virtual cloud network.
+                          properties:
+                            cidrs:
+                              items:
+                                type: string
+                              type: array
+                            id:
+                              type: string
+                          type: object
+                      type: object
                     type: object
                 type: object
             type: object

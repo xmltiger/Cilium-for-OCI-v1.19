@@ -66,6 +66,8 @@
 {{- $ipam := (coalesce .Values.ipam.mode $defaultIPAM) -}}
 {{- if .Values.eni.enabled }}
   {{- $ipam = "eni" -}}
+{{- else if .Values.oci.enabled }}
+  {{- $ipam = "oci" -}}
 {{- end }}
 
 {{- $bpfCtTcpMax := (coalesce .Values.bpf.ctTcpMax $defaultBpfCtTcpMax) -}}
@@ -537,12 +539,12 @@ data:
   {{- end }}
 {{- end }}
 
-  routing-mode: {{ .Values.routingMode | default (ternary "native" "tunnel" (or .Values.eni.enabled .Values.gke.enabled)) | quote }}
+  routing-mode: {{ .Values.routingMode | default (ternary "native" "tunnel" (or .Values.eni.enabled .Values.oci.enabled .Values.gke.enabled)) | quote }}
   tunnel-protocol: {{ .Values.tunnelProtocol | default "vxlan" | quote }}
 
 {{- if eq .Values.routingMode "native" }}
   {{- if and .Values.ipv4.enabled .Values.enableIPv4Masquerade (not .Values.ipMasqAgent.enabled) }}
-    {{- if and (ne $ipam "eni") (ne $ipam "alibabacloud") }}
+    {{- if and (ne $ipam "eni") (ne $ipam "alibabacloud") (ne $ipam "oci") }}
       {{- if not .Values.ipv4NativeRoutingCIDR }}
         {{- fail " ipv4NativeRoutingCIDR must be set when routingMode is native"}}
       {{- end }}
@@ -663,6 +665,21 @@ data:
 {{- end }}
 {{- if .Values.alibabacloud.nodeSpec.securityGroupTags }}
   alibabacloud-security-group-tags: {{ .Values.alibabacloud.nodeSpec.securityGroupTags | join "," | quote }}
+{{- end }}
+
+{{- if .Values.oci.enabled }}
+  enable-endpoint-routes: "true"
+  auto-create-cilium-node-resource: "true"
+  oci-vcn-id: {{ required "oci.nodeSpec.vcnID is required when oci.enabled=true" .Values.oci.nodeSpec.vcnID | quote }}
+{{- end }}
+{{- if .Values.oci.nodeSpec.subnetIDs }}
+  oci-subnet-ids: {{ .Values.oci.nodeSpec.subnetIDs | join "," | quote }}
+{{- end }}
+{{- if .Values.oci.nodeSpec.subnetTags }}
+  oci-subnet-tags: {{ .Values.oci.nodeSpec.subnetTags | join "," | quote }}
+{{- end }}
+{{- if .Values.oci.nodeSpec.networkSecurityGroups }}
+  oci-network-security-groups: {{ .Values.oci.nodeSpec.networkSecurityGroups | join "," | quote }}
 {{- end }}
 
 {{- if hasKey .Values "l7Proxy" }}

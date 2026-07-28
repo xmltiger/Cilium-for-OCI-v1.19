@@ -477,6 +477,30 @@ alibabacloud:
     vSwitchTags: []
     securityGroups: []
     securityGroupTags: []
+oci:
+  # -- Enable Oracle Cloud Infrastructure VNIC IPAM.
+  enabled: false
+  # -- Compartment OCID containing the Kubernetes instances and VCNs.
+  compartmentID: ""
+  # @schema
+  # enum: ["instance-principal", "config-file"]
+  # @schema
+  # -- OCI SDK authentication method: instance-principal or config-file.
+  authMethod: "instance-principal"
+  # -- OCI SDK config path and profile used with authMethod=config-file.
+  configFile: ""
+  configProfile: "DEFAULT"
+  # -- Release unused secondary private IPs after the Cilium release handshake.
+  releaseExcessIPs: false
+  nodeSpec:
+    # -- VCN OCID used for flat pod networking.
+    vcnID: ""
+    # -- Allowed subnet OCIDs. Empty selects matching subnets in the VCN.
+    subnetIDs: []
+    # -- Free-form subnet tag selectors in key=value form.
+    subnetTags: []
+    # -- Network security group OCIDs attached to Cilium-managed VNICs.
+    networkSecurityGroups: []
 # -- Enable bandwidth manager to optimize TCP and UDP workloads and allow
 # for rate-limiting traffic from individual Pods with EDT (Earliest Departure
 # Time) through the "kubernetes.io/egress-bandwidth" Pod annotation.
@@ -3117,6 +3141,8 @@ operator:
     awsDigest: ""
     # operator-alibabacloud-digest
     alibabacloudDigest: ""
+    # operator-oci-digest
+    ociDigest: ""
     useDigest: false
     pullPolicy: "IfNotPresent"
     suffix: ""

@@ -2322,6 +2322,10 @@ func (in *NodeSpec) DeepEqual(other *NodeSpec) bool {
 		return false
 	}
 
+	if !in.OCI.DeepEqual(&other.OCI) {
+		return false
+	}
+
 	if !in.IPAM.DeepEqual(&other.IPAM) {
 		return false
 	}
@@ -2353,6 +2357,10 @@ func (in *NodeStatus) DeepEqual(other *NodeStatus) bool {
 	}
 
 	if !in.AlibabaCloud.DeepEqual(&other.AlibabaCloud) {
+		return false
+	}
+
+	if !in.OCI.DeepEqual(&other.OCI) {
 		return false
 	}
 

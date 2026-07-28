@@ -41,6 +41,7 @@ If you are interested in extending Cilium to support migration between IPAM mode
    azure
    azure-delegated-ipam
    eni
+   oci
    gke
    crd
    deep_dive

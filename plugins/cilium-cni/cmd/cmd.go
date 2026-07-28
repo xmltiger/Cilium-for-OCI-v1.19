@@ -1353,7 +1353,7 @@ func buildLogAttrsWithCNIArgs(logger *slog.Logger, cniArgs *types.ArgsSpec) *slo
 // - DelegatedPlugin mode with InstallUplinkRoutesForDelegatedIPAM set to true.
 func needsEndpointRoutingOnHost(conf *models.DaemonConfigurationStatus) bool {
 	switch conf.IpamMode {
-	case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud:
+	case ipamOption.IPAMENI, ipamOption.IPAMAzure, ipamOption.IPAMAlibabaCloud, ipamOption.IPAMOCI:
 		return true
 	case ipamOption.IPAMDelegatedPlugin:
 		return conf.InstallUplinkRoutesForDelegatedIPAM

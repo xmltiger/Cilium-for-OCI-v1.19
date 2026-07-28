@@ -29,6 +29,9 @@ const (
 	// IPAMAlibabaCloud is the value to select the AlibabaCloud ENI IPAM plugin for option.IPAM
 	IPAMAlibabaCloud = "alibabacloud"
 
+	// IPAMOCI is the value to select Oracle Cloud Infrastructure VNIC IPAM.
+	IPAMOCI = "oci"
+
 	// IPAMDelegatedPlugin is the value to select CNI delegated IPAM plugin mode.
 	// In this mode, Cilium CNI invokes another CNI binary (the delegated plugin) for IPAM.
 	// See https://www.cni.dev/docs/spec/#section-4-plugin-delegation

@@ -83,6 +83,59 @@
       },
       "type": "object"
     },
+    "oci": {
+      "properties": {
+        "authMethod": {
+          "enum": [
+            "instance-principal",
+            "config-file"
+          ],
+          "type": "string"
+        },
+        "compartmentID": {
+          "type": "string"
+        },
+        "configFile": {
+          "type": "string"
+        },
+        "configProfile": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "nodeSpec": {
+          "properties": {
+            "networkSecurityGroups": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subnetIDs": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "subnetTags": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "vcnID": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "releaseExcessIPs": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "annotateK8sNode": {
       "type": "boolean"
     },
@@ -5092,6 +5145,9 @@
         "image": {
           "properties": {
             "alibabacloudDigest": {
+              "type": "string"
+            },
+            "ociDigest": {
               "type": "string"
             },
             "awsDigest": {
