@@ -1,0 +1,179 @@
+name: Publish OCI Cilium release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the v prefix (for example: 1.19.6-oci.1)"
+        required: true
+        default: "1.19.6-oci.1"
+        type: string
+  push:
+    tags:
+      - "v1.19.*-oci.*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-oci-cilium-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: xmltiger
+
+jobs:
+  metadata:
+    name: Resolve release metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      chart_version: ${{ steps.version.outputs.chart_version }}
+      image_tag: ${{ steps.version.outputs.image_tag }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            image_tag="${GITHUB_REF_NAME}"
+            chart_version="${image_tag#v}"
+          else
+            chart_version="${INPUT_VERSION#v}"
+            image_tag="v${chart_version}"
+          fi
+
+          if [[ ! "${chart_version}" =~ ^1\.19\.[0-9]+-oci\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid version: ${chart_version}" >&2
+            echo "Expected a SemVer value such as 1.19.6-oci.1" >&2
+            exit 1
+          fi
+
+          base_version="$(tr -d '[:space:]' < VERSION)"
+          if [[ "${chart_version}" != "${base_version}-oci."* ]]; then
+            echo "Version ${chart_version} must be based on VERSION=${base_version}" >&2
+            exit 1
+          fi
+
+          echo "chart_version=${chart_version}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
+
+  build-images:
+    name: Build ${{ matrix.image }}
+    needs: metadata
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: cilium
+            dockerfile: images/cilium/Dockerfile
+            build_args: ""
+          - image: operator-oci
+            dockerfile: images/operator/Dockerfile
+            build_args: |
+              OPERATOR_VARIANT=operator-oci
+          - image: hubble-relay
+            dockerfile: images/hubble-relay/Dockerfile
+            build_args: ""
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push multi-architecture image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: release
+          platforms: linux/amd64,linux/arm64
+          push: true
+          pull: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.image }}:${{ needs.metadata.outputs.image_tag }}
+          build-args: ${{ matrix.build_args }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ needs.metadata.outputs.image_tag }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  publish-chart:
+    name: Package and publish Helm chart
+    needs:
+      - metadata
+      - build-images
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+        with:
+          version: v3.18.4
+
+      - name: Package and validate chart
+        run: |
+          bash contrib/oci-release/package-chart.sh \
+            "${{ needs.metadata.outputs.chart_version }}" \
+            "${{ needs.metadata.outputs.image_tag }}" \
+            "${REGISTRY}/${IMAGE_NAMESPACE}" \
+            dist
+
+      - name: Log in to GHCR for Helm
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "${GHCR_TOKEN}" |
+            helm registry login "${REGISTRY}" \
+              --username "${GITHUB_ACTOR}" \
+              --password-stdin
+
+      - name: Push chart to GHCR
+        run: |
+          helm push \
+            "dist/cilium-${{ needs.metadata.outputs.chart_version }}.tgz" \
+            "oci://${REGISTRY}/${IMAGE_NAMESPACE}/charts"
+
+      - name: Upload installation package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cilium-${{ needs.metadata.outputs.chart_version }}-installation-package
+          path: |
+            dist/cilium-${{ needs.metadata.outputs.chart_version }}.tgz
+            dist/cilium-${{ needs.metadata.outputs.chart_version }}-oci-values.yaml
+            Documentation/installation/oci-vnic-ipam-installation-zh.md
+          if-no-files-found: error
+          retention-days: 90

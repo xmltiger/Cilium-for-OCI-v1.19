@@ -1,0 +1,53 @@
+# Cilium OCI VNIC IPAM installation values.
+# Replace every ocid1.*.example value before installation.
+
+image:
+  repository: "__REGISTRY_NAMESPACE__/cilium"
+  tag: "__IMAGE_TAG__"
+  digest: ""
+  useDigest: false
+
+preflight:
+  image:
+    repository: "__REGISTRY_NAMESPACE__/cilium"
+    tag: "__IMAGE_TAG__"
+    digest: ""
+    useDigest: false
+
+operator:
+  replicas: 2
+  image:
+    # The chart appends "-oci" when oci.enabled=true.
+    repository: "__REGISTRY_NAMESPACE__/operator"
+    tag: "__IMAGE_TAG__"
+    ociDigest: ""
+    useDigest: false
+
+oci:
+  enabled: true
+  compartmentID: "ocid1.compartment.oc1..example"
+  authMethod: "instance-principal"
+  releaseExcessIPs: false
+  nodeSpec:
+    vcnID: "ocid1.vcn.oc1..example"
+    # Leave empty to use matching subnets in the VCN, or list explicit subnet OCIDs.
+    subnetIDs: []
+    # Optional free-form tag selectors in key=value form.
+    subnetTags: []
+    # Optional NSGs attached to Cilium-managed VNICs.
+    networkSecurityGroups: []
+
+ipv4:
+  enabled: true
+ipv6:
+  enabled: false
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+    image:
+      repository: "__REGISTRY_NAMESPACE__/hubble-relay"
+      tag: "__IMAGE_TAG__"
+      digest: ""
+      useDigest: false
