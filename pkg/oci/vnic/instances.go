@@ -53,13 +53,12 @@ func NewInstancesManager(logger *slog.Logger, api API) *InstancesManager {
 	}
 }
 
-func (m *InstancesManager) CreateNode(obj *v2.CiliumNode, node *ipam.Node) ipam.NodeOperations {
+func (m *InstancesManager) CreateNode(obj *v2.CiliumNode, _ *ipam.Node) ipam.NodeOperations {
 	return &Node{
 		logger:     m.logger,
 		k8sObj:     obj,
 		manager:    m,
-		node:       node,
-		instanceID: node.InstanceID(),
+		instanceID: obj.InstanceID(),
 		vnics:      map[string]types.VNIC{},
 	}
 }

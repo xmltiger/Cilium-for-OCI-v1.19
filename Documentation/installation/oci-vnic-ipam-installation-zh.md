@@ -3,11 +3,18 @@
 本文适用于 `xmltiger/Cilium-for-OCI` 仓库的 `oci-v1.19` 分支。该分支基于 Cilium
 1.19.6，增加了 OCI VNIC IPAM、`cilium-operator-oci` 和对应 Helm 配置。
 
-示例首发版本：
+当前修复版本：
 
-- Helm Chart：`1.19.6-oci.1`
-- 容器镜像：`v1.19.6-oci.1`
+- Helm Chart：`1.19.6-oci.2`
+- 容器镜像：`v1.19.6-oci.2`
 - 平台：`linux/amd64`、`linux/arm64`
+
+`oci.2` 修复以下问题：
+
+- OCI Node 创建时从尚未初始化的通用 IPAM Node 读取 Instance ID，导致空
+  Instance ID 被解释为遍历 compartment 内全部实例，并可能跨实例分配私有 IP；
+- OCI IMDS VNIC 响应不提供 subnet OCID，且 `nicIndex` 表示物理 NIC 而不是
+  主 VNIC，旧实现因此无法在部分 OCI 实例上自动创建 `CiliumNode`。
 
 ## 1. 发布物
 
@@ -15,11 +22,11 @@
 
 | 发布物 | 地址 |
 | --- | --- |
-| Cilium Agent | `ghcr.io/xmltiger/cilium:v1.19.6-oci.1` |
-| OCI Operator | `ghcr.io/xmltiger/operator-oci:v1.19.6-oci.1` |
-| Hubble Relay | `ghcr.io/xmltiger/hubble-relay:v1.19.6-oci.1` |
-| Helm OCI Chart | `oci://ghcr.io/xmltiger/charts/cilium:1.19.6-oci.1` |
-| 离线 Chart 包 | `cilium-1.19.6-oci.1.tgz` |
+| Cilium Agent | `ghcr.io/xmltiger/cilium:v1.19.6-oci.2` |
+| OCI Operator | `ghcr.io/xmltiger/operator-oci:v1.19.6-oci.2` |
+| Hubble Relay | `ghcr.io/xmltiger/hubble-relay:v1.19.6-oci.2` |
+| Helm OCI Chart | `oci://ghcr.io/xmltiger/charts/cilium:1.19.6-oci.2` |
+| 离线 Chart 包 | `cilium-1.19.6-oci.2.tgz` |
 
 Agent、OCI Operator 和 Hubble Relay 由本分支源码构建。Chart 仍复用上游固定
 digest 的 Cilium Envoy、certgen、Hubble UI 等镜像；若集群不能访问 Quay.io，
@@ -68,13 +75,13 @@ go build -tags ipam_provider_oci -o /tmp/cilium-operator-oci ./operator
 
 ```bash
 git switch oci-v1.19
-git tag -a v1.19.6-oci.1 -m "Cilium 1.19.6 OCI release 1"
+git tag -a v1.19.6-oci.2 -m "Cilium 1.19.6 OCI release 2"
 git push origin oci-v1.19
-git push origin v1.19.6-oci.1
+git push origin v1.19.6-oci.2
 ```
 
 也可以在 GitHub 仓库的 **Actions → Publish OCI Cilium release → Run
-workflow** 中选择 `oci-v1.19`，输入 `1.19.6-oci.1`。
+workflow** 中选择 `oci-v1.19`，输入 `1.19.6-oci.2`。
 
 工作流使用仓库自带的 `GITHUB_TOKEN`，仓库的 Actions 设置必须允许该 token
 写 Packages。首次推送后，在 GitHub Packages 中分别打开以下包，把
@@ -95,7 +102,7 @@ export GHCR_USERNAME=xmltiger
 read -rsp "GHCR token: " GHCR_TOKEN
 export GHCR_TOKEN
 
-contrib/oci-release/publish-local.sh 1.19.6-oci.1
+contrib/oci-release/publish-local.sh 1.19.6-oci.2
 
 unset GHCR_TOKEN
 ```
@@ -104,8 +111,8 @@ unset GHCR_TOKEN
 
 ```bash
 contrib/oci-release/package-chart.sh \
-  1.19.6-oci.1 \
-  v1.19.6-oci.1 \
+  1.19.6-oci.2 \
+  v1.19.6-oci.2 \
   ghcr.io/xmltiger \
   dist
 ```
@@ -113,8 +120,8 @@ contrib/oci-release/package-chart.sh \
 输出：
 
 ```text
-dist/cilium-1.19.6-oci.1.tgz
-dist/cilium-1.19.6-oci.1-oci-values.yaml
+dist/cilium-1.19.6-oci.2.tgz
+dist/cilium-1.19.6-oci.2-oci-values.yaml
 ```
 
 ## 5. 验证发布物
@@ -125,7 +132,7 @@ dist/cilium-1.19.6-oci.1-oci-values.yaml
 ```bash
 for image in cilium operator-oci hubble-relay; do
   docker buildx imagetools inspect \
-    "ghcr.io/xmltiger/${image}:v1.19.6-oci.1"
+    "ghcr.io/xmltiger/${image}:v1.19.6-oci.2"
 done
 ```
 
@@ -133,10 +140,10 @@ done
 
 ```bash
 helm pull oci://ghcr.io/xmltiger/charts/cilium \
-  --version 1.19.6-oci.1
+  --version 1.19.6-oci.2
 
 helm template cilium oci://ghcr.io/xmltiger/charts/cilium \
-  --version 1.19.6-oci.1 \
+  --version 1.19.6-oci.2 \
   --namespace kube-system \
   --set oci.enabled=true \
   --set oci.compartmentID=ocid1.compartment.oc1..example \
@@ -211,7 +218,7 @@ cp contrib/oci-release/values-oci.example.yaml values-oci.yaml
 将示例文件中的：
 
 - `__REGISTRY_NAMESPACE__` 替换为 `ghcr.io/xmltiger`；
-- `__IMAGE_TAG__` 替换为 `v1.19.6-oci.1`；
+- `__IMAGE_TAG__` 替换为 `v1.19.6-oci.2`；
 - `oci.compartmentID` 替换为 Compute/Network 资源所在 compartment OCID；
 - `oci.nodeSpec.vcnID` 替换为目标 VCN OCID。
 
@@ -254,7 +261,7 @@ kubectl get nodes -o wide
 
 ```bash
 helm install cilium oci://ghcr.io/xmltiger/charts/cilium \
-  --version 1.19.6-oci.1 \
+  --version 1.19.6-oci.2 \
   --namespace kube-system \
   --values values-oci.yaml \
   --wait \
@@ -281,7 +288,7 @@ imagePullSecrets:
 若使用下载的 `.tgz`：
 
 ```bash
-helm install cilium ./cilium-1.19.6-oci.1.tgz \
+helm install cilium ./cilium-1.19.6-oci.2.tgz \
   --namespace kube-system \
   --values values-oci.yaml \
   --wait \

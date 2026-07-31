@@ -22,19 +22,15 @@ import (
 )
 
 const (
-	unableToDetermineLimits = "unableToDetermineLimits"
-	unableToFindSubnet      = "unableToFindSubnet"
-	unableToAttachVNIC      = "unableToAttachVNIC"
-	unableToAllocateIPs     = "unableToAllocateIPs"
+	unableToDetermineLimits   = "unableToDetermineLimits"
+	unableToDetermineInstance = "unableToDetermineInstance"
+	unableToFindSubnet        = "unableToFindSubnet"
+	unableToAttachVNIC        = "unableToAttachVNIC"
+	unableToAllocateIPs       = "unableToAllocateIPs"
 )
-
-type ipamNodeActions interface {
-	InstanceID() string
-}
 
 type Node struct {
 	logger *slog.Logger
-	node   ipamNodeActions
 
 	mutex lock.RWMutex
 	vnics map[string]types.VNIC
@@ -47,12 +43,17 @@ type Node struct {
 func (n *Node) UpdatedNode(obj *v2.CiliumNode) {
 	n.mutex.Lock()
 	n.k8sObj = obj
+	n.instanceID = obj.InstanceID()
 	n.mutex.Unlock()
 }
 
 func (n *Node) PopulateStatusFields(resource *v2.CiliumNode) {
 	resource.Status.OCI.VNICs = map[string]types.VNIC{}
-	n.manager.ForeachInstance(n.node.InstanceID(),
+	instanceID := n.getInstanceID()
+	if instanceID == "" {
+		return
+	}
+	n.manager.ForeachInstance(instanceID,
 		func(_, interfaceID string, revision ipamTypes.InterfaceRevision) error {
 			vnic, ok := revision.Resource.(*types.VNIC)
 			if ok {
@@ -63,6 +64,10 @@ func (n *Node) PopulateStatusFields(resource *v2.CiliumNode) {
 }
 
 func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationAction, scopedLog *slog.Logger) (int, string, error) {
+	instanceID := n.getInstanceID()
+	if instanceID == "" {
+		return 0, unableToDetermineInstance, errors.New("OCI instance ID is required")
+	}
 	instanceLimits, ok := n.getLimits()
 	if !ok {
 		return 0, unableToDetermineLimits, errors.New("unable to determine OCI VNIC limits")
@@ -87,11 +92,11 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 	scopedLog = scopedLog.With(
 		"subnetID", subnet.ID,
 		logfields.ToAllocate, toAllocate,
-		logfields.InstanceID, n.instanceID,
+		logfields.InstanceID, instanceID,
 	)
 	attachmentID, err := n.manager.api.AttachVNIC(
 		ctx,
-		n.instanceID,
+		instanceID,
 		subnet.ID,
 		resource.Spec.OCI.NetworkSecurityGroups,
 		map[string]string{
@@ -130,7 +135,7 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 	n.mutex.Lock()
 	n.vnics[vnic.ID] = *vnic.DeepCopy()
 	n.mutex.Unlock()
-	n.manager.UpdateVNIC(n.instanceID, vnic)
+	n.manager.UpdateVNIC(instanceID, vnic)
 	scopedLog.Info("Attached OCI VNIC and allocated private IPs",
 		"vnicID", vnic.ID,
 		"attachmentID", attachmentID,
@@ -139,6 +144,10 @@ func (n *Node) CreateInterface(ctx context.Context, allocation *ipam.AllocationA
 }
 
 func (n *Node) ResyncInterfacesAndIPs(_ context.Context, _ *slog.Logger) (ipamTypes.AllocationMap, stats.InterfaceStats, error) {
+	instanceID := n.getInstanceID()
+	if instanceID == "" {
+		return nil, stats.InterfaceStats{}, errors.New("OCI instance ID is required")
+	}
 	instanceLimits, ok := n.getLimits()
 	if !ok {
 		return nil, stats.InterfaceStats{}, ipam.LimitsNotFound{}
@@ -147,7 +156,7 @@ func (n *Node) ResyncInterfacesAndIPs(_ context.Context, _ *slog.Logger) (ipamTy
 	available := ipamTypes.AllocationMap{}
 	result := stats.InterfaceStats{NodeCapacity: instanceLimits.Adapters * instanceLimits.IPv4}
 	vnics := map[string]types.VNIC{}
-	n.manager.ForeachInstance(n.instanceID,
+	n.manager.ForeachInstance(instanceID,
 		func(_, _ string, revision ipamTypes.InterfaceRevision) error {
 			vnic, ok := revision.Resource.(*types.VNIC)
 			if !ok {
@@ -296,4 +305,10 @@ func (n *Node) getLimits() (ipamTypes.Limits, bool) {
 		return ipamTypes.Limits{}, false
 	}
 	return limits.Get(n.k8sObj.Spec.OCI.Shape)
+}
+
+func (n *Node) getInstanceID() string {
+	n.mutex.RLock()
+	defer n.mutex.RUnlock()
+	return n.instanceID
 }

@@ -29,7 +29,7 @@ if [[ "$#" -gt 1 ]]; then
   exit 2
 fi
 
-chart_version="${1:-1.19.6-oci.1}"
+chart_version="${1:-1.19.6-oci.2}"
 chart_version="${chart_version#v}"
 image_tag="v${chart_version}"
 registry_namespace="${REGISTRY_NAMESPACE:-ghcr.io/xmltiger}"

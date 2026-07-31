@@ -23,8 +23,6 @@ const (
 	initialRetryWait = 200 * time.Millisecond
 )
 
-var errPrimaryVNICNotFound = errors.New("primary VNIC not found in OCI instance metadata")
-
 // Client retrieves instance information from version 2 of the OCI instance
 // metadata service.
 type Client struct {
@@ -38,8 +36,6 @@ type Instance struct {
 	Shape              string
 	AvailabilityDomain string
 	CompartmentID      string
-	PrimaryVNICID      string
-	PrimarySubnetID    string
 }
 
 type instanceResponse struct {
@@ -47,12 +43,6 @@ type instanceResponse struct {
 	Shape              string `json:"shape"`
 	AvailabilityDomain string `json:"availabilityDomain"`
 	CompartmentID      string `json:"compartmentId"`
-}
-
-type vnicResponse struct {
-	VNICID   string `json:"vnicId"`
-	SubnetID string `json:"subnetOcid"`
-	NICIndex int    `json:"nicIndex"`
 }
 
 // NewClient creates an OCI metadata client with bounded request time.
@@ -127,27 +117,14 @@ func (c *Client) getOnce(ctx context.Context, path string, dst any) (retry bool,
 	return false, nil
 }
 
-// GetInstance returns the local compute instance and primary VNIC metadata.
+// GetInstance returns the local compute instance metadata needed to initialize
+// OCI IPAM. VNIC metadata is deliberately not used here: OCI IMDS does not
+// expose subnet OCIDs, and nicIndex identifies a physical NIC rather than the
+// instance's primary VNIC.
 func (c *Client) GetInstance(ctx context.Context) (Instance, error) {
 	var instance instanceResponse
 	if err := c.get(ctx, "instance/", &instance); err != nil {
 		return Instance{}, err
-	}
-
-	var vnics []vnicResponse
-	if err := c.get(ctx, "vnics/", &vnics); err != nil {
-		return Instance{}, err
-	}
-
-	var primary *vnicResponse
-	for i := range vnics {
-		if vnics[i].NICIndex == 0 {
-			primary = &vnics[i]
-			break
-		}
-	}
-	if primary == nil {
-		return Instance{}, errPrimaryVNICNotFound
 	}
 
 	result := Instance{
@@ -155,25 +132,19 @@ func (c *Client) GetInstance(ctx context.Context) (Instance, error) {
 		Shape:              strings.TrimSpace(instance.Shape),
 		AvailabilityDomain: strings.TrimSpace(instance.AvailabilityDomain),
 		CompartmentID:      strings.TrimSpace(instance.CompartmentID),
-		PrimaryVNICID:      strings.TrimSpace(primary.VNICID),
-		PrimarySubnetID:    strings.TrimSpace(primary.SubnetID),
 	}
-	if result.ID == "" || result.Shape == "" || result.CompartmentID == "" ||
-		result.PrimaryVNICID == "" || result.PrimarySubnetID == "" {
-		return Instance{}, errors.New("OCI metadata response is missing required instance or VNIC fields")
+	if result.ID == "" || result.Shape == "" || result.CompartmentID == "" {
+		return Instance{}, errors.New("OCI metadata response is missing required instance fields")
 	}
 
 	return result, nil
 }
 
 // GetInstanceMetadata returns the local instance fields needed by CiliumNode.
-// The VCN identifier is resolved from the primary subnet by the OCI API client,
-// because the OCI metadata service does not expose it.
-func GetInstanceMetadata(ctx context.Context) (instanceID, shape, availabilityDomain, compartmentID, primaryVNICID, primarySubnetID string, err error) {
+func GetInstanceMetadata(ctx context.Context) (instanceID, shape, availabilityDomain, compartmentID string, err error) {
 	instance, err := NewClient().GetInstance(ctx)
 	if err != nil {
-		return "", "", "", "", "", "", err
+		return "", "", "", "", err
 	}
-	return instance.ID, instance.Shape, instance.AvailabilityDomain, instance.CompartmentID,
-		instance.PrimaryVNICID, instance.PrimarySubnetID, nil
+	return instance.ID, instance.Shape, instance.AvailabilityDomain, instance.CompartmentID, nil
 }

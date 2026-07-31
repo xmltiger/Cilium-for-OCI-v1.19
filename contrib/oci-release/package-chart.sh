@@ -11,7 +11,7 @@ Usage:
   package-chart.sh CHART_VERSION [IMAGE_TAG] [REGISTRY_NAMESPACE] [OUTPUT_DIR]
 
 Example:
-  package-chart.sh 1.19.6-oci.1 v1.19.6-oci.1 ghcr.io/xmltiger dist
+  package-chart.sh 1.19.6-oci.2 v1.19.6-oci.2 ghcr.io/xmltiger dist
 EOF
 }
 

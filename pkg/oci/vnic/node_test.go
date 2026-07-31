@@ -20,10 +20,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testNodeActions struct{ id string }
-
-func (n testNodeActions) InstanceID() string { return n.id }
-
 type fakeAPI struct {
 	attach       func(instanceID, subnetID string, nsgIDs []string, tags map[string]string) (string, error)
 	wait         func(attachmentID string) (core.VnicAttachment, error)
@@ -84,6 +80,63 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
+func TestCreateNodeUsesCiliumNodeInstanceID(t *testing.T) {
+	limits.Set("VM.Standard.Test", ipamTypes.Limits{Adapters: 2, IPv4: 32})
+	manager := NewInstancesManager(testLogger(), &fakeAPI{})
+	manager.UpdateVNIC("target-instance", &types.VNIC{
+		ID: "target-vnic",
+		PrivateIPs: []types.PrivateIP{
+			{ID: "target-primary", Address: "10.0.1.2", IsPrimary: true},
+			{ID: "target-pod", Address: "10.0.1.10"},
+		},
+	})
+	manager.UpdateVNIC("foreign-instance", &types.VNIC{
+		ID: "foreign-vnic",
+		PrivateIPs: []types.PrivateIP{
+			{ID: "foreign-primary", Address: "10.0.2.2", IsPrimary: true},
+			{ID: "foreign-pod", Address: "10.0.2.10"},
+		},
+	})
+	resource := &v2.CiliumNode{Spec: v2.NodeSpec{
+		InstanceID: "target-instance",
+		OCI:        types.Spec{Shape: "VM.Standard.Test"},
+	}}
+
+	operations := manager.CreateNode(resource, &ipam.Node{})
+	node, ok := operations.(*Node)
+	require.True(t, ok)
+	require.Equal(t, "target-instance", node.getInstanceID())
+
+	available, _, err := node.ResyncInterfacesAndIPs(context.Background(), testLogger())
+	require.NoError(t, err)
+	require.Equal(t, ipamTypes.AllocationMap{
+		"10.0.1.10": {Resource: "target-vnic"},
+	}, available)
+}
+
+func TestNodeRejectsEmptyInstanceID(t *testing.T) {
+	limits.Set("VM.Standard.Test", ipamTypes.Limits{Adapters: 2, IPv4: 32})
+	manager := NewInstancesManager(testLogger(), &fakeAPI{})
+	manager.UpdateVNIC("foreign-instance", &types.VNIC{
+		ID: "foreign-vnic",
+		PrivateIPs: []types.PrivateIP{
+			{ID: "foreign-pod", Address: "10.0.2.10"},
+		},
+	})
+	node := &Node{
+		logger: testLogger(),
+		k8sObj: &v2.CiliumNode{Spec: v2.NodeSpec{
+			OCI: types.Spec{Shape: "VM.Standard.Test"},
+		}},
+		manager: manager,
+		vnics:   map[string]types.VNIC{},
+	}
+
+	available, _, err := node.ResyncInterfacesAndIPs(context.Background(), testLogger())
+	require.ErrorContains(t, err, "OCI instance ID is required")
+	require.Nil(t, available)
+}
+
 func TestNodeUsesPrimaryVNICCapacityAndUniqueRouteIndex(t *testing.T) {
 	limits.Set("VM.Standard.Test", ipamTypes.Limits{Adapters: 2, IPv4: 32})
 	api := &fakeAPI{}
@@ -113,7 +166,7 @@ func TestNodeUsesPrimaryVNICCapacityAndUniqueRouteIndex(t *testing.T) {
 		},
 	}
 	node := &Node{
-		logger: testLogger(), node: testNodeActions{"instance"}, k8sObj: resource,
+		logger: testLogger(), k8sObj: resource,
 		manager: manager, instanceID: "instance", vnics: map[string]types.VNIC{},
 	}
 
@@ -174,7 +227,7 @@ func TestCreateInterfaceCleansUpAfterAllocationFailure(t *testing.T) {
 		OCI:        types.Spec{Shape: "VM.Standard.Test", VCNID: "vcn"},
 	}}
 	node := &Node{
-		logger: testLogger(), node: testNodeActions{"instance"}, k8sObj: resource,
+		logger: testLogger(), k8sObj: resource,
 		manager: manager, instanceID: "instance", vnics: map[string]types.VNIC{},
 	}
 	allocation := &ipam.AllocationAction{}

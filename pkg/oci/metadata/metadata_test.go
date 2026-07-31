@@ -26,11 +26,6 @@ func TestGetInstance(t *testing.T) {
 				"availabilityDomain":" AD-1 ",
 				"compartmentId":" ocid1.compartment.oc1.test "
 			}`))
-		case "/opc/v2/vnics/":
-			_, _ = w.Write([]byte(`[
-				{"vnicId":"secondary","subnetOcid":"secondary-subnet","nicIndex":1},
-				{"vnicId":" primary-vnic ","subnetOcid":" primary-subnet ","nicIndex":0}
-			]`))
 		default:
 			http.NotFound(w, r)
 		}
@@ -41,14 +36,12 @@ func TestGetInstance(t *testing.T) {
 	instance, err := client.GetInstance(context.Background())
 
 	require.NoError(t, err)
-	require.Equal(t, 2, calls)
+	require.Equal(t, 1, calls)
 	require.Equal(t, Instance{
 		ID:                 "ocid1.instance.oc1.test",
 		Shape:              "VM.Standard.A1.Flex",
 		AvailabilityDomain: "AD-1",
 		CompartmentID:      "ocid1.compartment.oc1.test",
-		PrimaryVNICID:      "primary-vnic",
-		PrimarySubnetID:    "primary-subnet",
 	}, instance)
 }
 
@@ -71,22 +64,8 @@ func TestGetInstanceErrors(t *testing.T) {
 		},
 		{
 			name: "missing required fields",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/opc/v2/instance/" {
-					_, _ = w.Write([]byte(`{"id":"id"}`))
-					return
-				}
-				_, _ = w.Write([]byte(`[{"vnicId":"vnic","subnetOcid":"subnet","nicIndex":0}]`))
-			},
-		},
-		{
-			name: "primary VNIC missing",
-			handler: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/opc/v2/instance/" {
-					_, _ = w.Write([]byte(`{"id":"id","shape":"shape","compartmentId":"compartment"}`))
-					return
-				}
-				_, _ = w.Write([]byte(`[{"vnicId":"vnic","subnetOcid":"subnet","nicIndex":1}]`))
+			handler: func(w http.ResponseWriter, _ *http.Request) {
+				_, _ = w.Write([]byte(`{"id":"id"}`))
 			},
 		},
 	}
@@ -115,7 +94,7 @@ func TestGetRetriesTransientStatus(t *testing.T) {
 			_, _ = w.Write([]byte(`{"id":"id","shape":"shape","compartmentId":"compartment"}`))
 			return
 		}
-		_, _ = w.Write([]byte(`[{"vnicId":"vnic","subnetOcid":"subnet","nicIndex":0}]`))
+		http.NotFound(w, r)
 	}))
 	defer server.Close()
 

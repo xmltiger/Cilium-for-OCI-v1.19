@@ -588,7 +588,7 @@ func (n *NodeDiscovery) mutateNodeResource(ctx context.Context, nodeResource *ci
 		}
 
 	case ipamOption.IPAMOCI:
-		instanceID, shape, availabilityDomain, compartmentID, primaryVNICID, primarySubnetID, err :=
+		instanceID, shape, availabilityDomain, compartmentID, err :=
 			ociMetadata.GetInstanceMetadata(ctx)
 		if err != nil {
 			return fmt.Errorf("retrieve OCI instance metadata: %w", err)
@@ -599,8 +599,6 @@ func (n *NodeDiscovery) mutateNodeResource(ctx context.Context, nodeResource *ci
 			CompartmentID:         compartmentID,
 			VCNID:                 n.config.OCIVCNID,
 			AvailabilityDomain:    availabilityDomain,
-			PrimaryVNICID:         primaryVNICID,
-			PrimarySubnetID:       primarySubnetID,
 			SubnetIDs:             n.config.OCISubnetIDs,
 			SubnetTags:            n.config.OCISubnetTags,
 			NetworkSecurityGroups: n.config.OCINetworkSecurityGroups,
