@@ -10,8 +10,9 @@ github.com/xmltiger/Cilium-for-OCI的项目升级版本，修改了存在的bug�
 | Helm OCI Chart | `oci://ghcr.io/xmltiger/charts/cilium:1.19.6-oci.2` |
 
 # 安装文档
-在OCI上自建k8s集群，安装部署Cilium网络组件、以及OCI CCM、OCI CSI。
-https://github.com/xmltiger/Cilium-for-OCI-v1.19/edit/1.19.6-oci.2/Documentation/installation/oci-vnic-ipam-installation-zh.md
+在OCI上自建k8s集群，安装部署Cilium网络组件。
+https://github.com/xmltiger/Cilium-for-OCI-v1.19/edit/1.19.6-oci.2/Documentation/installation/oci-vnic-ipam-installation-zh.md。
+OCI CCM、OCI CSI安装请参考OCI官方文档。
 
 # 安装相关组件版本
 | 组件 | 版本/配置 |
